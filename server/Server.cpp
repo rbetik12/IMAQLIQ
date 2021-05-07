@@ -5,9 +5,22 @@
 #include "Server.h"
 
 
-int main() {
-    Server server(8080);
-    server.Run();
+int main(int argc, char* argv[]) {
+    short port;
+    std::unique_ptr<Server> server;
+
+    if (argc < 2) {
+        fputs("server <port>", stderr);
+        exit(EXIT_FAILURE);
+    }
+
+    if (!(port = atoi(argv[1]))) {
+        fputs("Port must be a number between 0 and 65536", stderr);
+        exit(EXIT_FAILURE);
+    }
+
+    server.reset(Server::Create(port));
+    server->Run();
     return 0;
 }
 
@@ -79,6 +92,8 @@ void Server::Run() {
 
     // Ignore SIGPIPE for proper client socket closing
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGTERM, Server::HandleSIGTERM);
+    signal(SIGHUP, Server::HandleSIGHUP);
 
     while (isRunning) {
         FD_ZERO(&readFds);
@@ -125,4 +140,29 @@ void Server::Run() {
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
 
+}
+
+void Server::HandleSIGTERM(int signal) {
+    Server::GetInstance()->Shutdown();
+}
+
+void Server::HandleSIGHUP(int signal) {
+    Server::GetInstance()->Shutdown();
+}
+
+Server *Server::GetInstance() {
+    return instance;
+}
+
+Server *Server::Create(short port) {
+    if (instance == nullptr) {
+        instance = new Server(port);
+    }
+    return instance;
+}
+
+Server* Server::instance = nullptr;
+
+void Server::Shutdown() {
+    isRunning = false;
 }

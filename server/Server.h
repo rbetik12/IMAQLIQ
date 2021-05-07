@@ -10,14 +10,23 @@
 
 class Server {
 public:
-    Server(short port);
+    static Server* GetInstance();
+    static Server* Create(short port);
+
     ~Server();
 
     void Run();
-
+    void Shutdown();
 private:
+    static void HandleSIGTERM(int signal);
+    static void HandleSIGHUP(int signal);
+
+    Server(short port);
+
     void AcceptThread();
 private:
+    static Server* instance;
+
     int serverFd;
     bool isRunning;
     std::vector<int> clientSockets;
