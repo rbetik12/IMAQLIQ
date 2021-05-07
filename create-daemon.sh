@@ -7,7 +7,7 @@ sudo echo "
 Description=Cool daemon
 
 [Service]
-ExecStart=$PWD/server 8080
+ExecStart=$PWD/server/server 8080
 Restart=on-failure
 
 [Install]
