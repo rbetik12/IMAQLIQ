@@ -124,7 +124,7 @@ void Server::Run() {
                 snprintf((char*) &saveDirBuff, 64, "/tmp/%s", buff);
 
                 if (readAmount > 0) {
-                   fileFd = open(saveDirBuff, O_CREAT | O_RDWR | O_TRUNC, 0660);
+                   fileFd = open(saveDirBuff, O_CREAT | O_RDWR | O_TRUNC, 0666);
                    if (fileFd <= 0) {
                        send(clientSockets[i], "n", 1, 0);
                    }
