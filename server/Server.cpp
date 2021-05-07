@@ -84,7 +84,7 @@ void Server::Run() {
     acceptThread->detach();
     const int bufferSize = 4096;
     char buff[bufferSize];
-    char homeDirBuff[512];
+    char saveDirBuff[512];
     int ret, readAmount, fileFd;
     fd_set readFds;
     struct timeval tv;
@@ -120,11 +120,11 @@ void Server::Run() {
             if (ret > 0) {
                 memset(buff, 0, bufferSize);
                 readAmount = read(clientSockets[i], &buff, bufferSize);
-                memset(&homeDirBuff, 0, sizeof(homeDirBuff));
-                snprintf((char*) &homeDirBuff, 64, "/tmp/%s", buff);
+                memset(&saveDirBuff, 0, sizeof(saveDirBuff));
+                snprintf((char*) &saveDirBuff, 64, "/tmp/%s", buff);
 
                 if (readAmount > 0) {
-                   fileFd = open(buff, O_CREAT | O_RDWR | O_TRUNC, 0660);
+                   fileFd = open(saveDirBuff, O_CREAT | O_RDWR | O_TRUNC, 0660);
                    if (fileFd <= 0) {
                        send(clientSockets[i], "n", 1, 0);
                    }
@@ -132,8 +132,7 @@ void Server::Run() {
                        send(clientSockets[i], "y", 1, 0);
                    }
                 }
-                syslog(LOG_INFO, "Got new file: %s. Saving to %s/%s", buff,
-                                                                std::filesystem::current_path().string().c_str(), buff);
+                syslog(LOG_INFO, "Got new file: %s. Saving to %s.", buff, saveDirBuff);
                 if (fileFd > 0) {
                     while ((readAmount = read(clientSockets[i], &buff, bufferSize)) > 0) {
                         write(fileFd, &buff, readAmount);
