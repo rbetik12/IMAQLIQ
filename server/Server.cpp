@@ -1,9 +1,10 @@
+#include "Server.h"
 #include <iostream>
 #include <memory>
 #include <signal.h>
 #include <fcntl.h>
-#include "Server.h"
-
+#include <syslog.h>
+#include <filesystem>
 
 int main(int argc, char* argv[]) {
     short port;
@@ -94,6 +95,7 @@ void Server::Run() {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, Server::HandleSIGTERM);
     signal(SIGHUP, Server::HandleSIGHUP);
+    openlog("log", LOG_PID|LOG_CONS, LOG_USER);
 
     while (isRunning) {
         FD_ZERO(&readFds);
@@ -126,6 +128,8 @@ void Server::Run() {
                        send(clientSockets[i], "y", 1, 0);
                    }
                 }
+                syslog(LOG_INFO, "Got new file: %s. Saving to %s/%s", buff,
+                                                                std::filesystem::current_path().string().c_str(), buff);
                 if (fileFd > 0) {
                     while ((readAmount = read(clientSockets[i], &buff, bufferSize)) > 0) {
                         write(fileFd, &buff, readAmount);
