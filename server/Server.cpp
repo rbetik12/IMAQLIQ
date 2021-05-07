@@ -11,7 +11,7 @@ int main() {
     return 0;
 }
 
-Server::Server(short port): isRunning(false), clientId(0) {
+Server::Server(short port): isRunning(false) {
     int opt;
 
     if ((serverFd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -41,9 +41,12 @@ Server::Server(short port): isRunning(false), clientId(0) {
     }
 }
 
-Server::~Server() {}
-
-void Server::ServerTick() {}
+Server::~Server() {
+    for (auto sock: clientSockets) {
+        close(sock);
+    }
+    close(serverFd);
+}
 
 void Server::AcceptThread() {
     int clientSocket;
@@ -71,12 +74,14 @@ void Server::Run() {
     tv.tv_sec = 0;
     tv.tv_usec = 1000;
     int fileFd;
-    //ignore SIGPIPE
+
+    // Ignore SIGPIPE for proper client socket closing
     signal(SIGPIPE, SIG_IGN);
 
     while (isRunning) {
         FD_ZERO(&readFds);
         for (int i = 0; i < clientSockets.size(); i++) {
+            // Here we send 1 byte to client socket to check whether is it still alive or not
             ret = send(clientSockets[i], "1", 1, 0);
             if (ret == -1) {
                 close(clientSockets[i]);
@@ -97,13 +102,22 @@ void Server::Run() {
                 readAmount = read(clientSockets[i], &buff, bufferSize);
                 if (readAmount > 0) {
                    fileFd = open(buff, O_CREAT | O_RDWR | O_TRUNC, 0660);
-                   if (fileFd <= 0) {}
+                   if (fileFd <= 0) {
+                       send(clientSockets[i], "n", 1, 0);
+                   }
+                   else {
+                       send(clientSockets[i], "y", 1, 0);
+                   }
                 }
-
-                while ((readAmount = read(clientSockets[i], &buff, bufferSize)) > 0) {
-                    write(fileFd, &buff, readAmount);
+                if (fileFd > 0) {
+                    while ((readAmount = read(clientSockets[i], &buff, bufferSize)) > 0) {
+                        write(fileFd, &buff, readAmount);
+                    }
+                    close(fileFd);
                 }
-                close(fileFd);
+                else {
+                    while ((readAmount = read(clientSockets[i], &buff, bufferSize)) > 0);
+                }
             }
         }
         std::this_thread::sleep_for(std::chrono::microseconds(100));

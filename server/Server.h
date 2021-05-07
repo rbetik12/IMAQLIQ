@@ -16,11 +16,9 @@ public:
     void Run();
 
 private:
-    void ServerTick();
     void AcceptThread();
 private:
     int serverFd;
-    int clientId;
     bool isRunning;
     std::vector<int> clientSockets;
     struct sockaddr_in address;
