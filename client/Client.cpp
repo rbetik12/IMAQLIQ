@@ -136,6 +136,7 @@ int main(int argc, char* argv[]) {
                            bytesSent, fileSize);
                 }
                 fflush(stdout);
+                send(sock, &buffer, readAmount, 0);
             }
             printf("\n");
             printf("Successfully sent file %s to server!\n", filename);

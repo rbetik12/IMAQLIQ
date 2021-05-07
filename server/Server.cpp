@@ -45,6 +45,7 @@ Server::~Server() {
     for (auto sock: clientSockets) {
         close(sock);
     }
+    acceptThread.reset();
     close(serverFd);
 }
 
@@ -66,14 +67,15 @@ void Server::AcceptThread() {
 void Server::Run() {
     isRunning = true;
     acceptThread = std::make_unique<std::thread>(&Server::AcceptThread, this);
+    acceptThread->detach();
     const int bufferSize = 4096;
     char buff[bufferSize];
+    int ret, readAmount, fileFd;
     fd_set readFds;
-    int ret, readAmount;
     struct timeval tv;
+
     tv.tv_sec = 0;
     tv.tv_usec = 1000;
-    int fileFd;
 
     // Ignore SIGPIPE for proper client socket closing
     signal(SIGPIPE, SIG_IGN);
