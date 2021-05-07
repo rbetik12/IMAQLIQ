@@ -84,6 +84,7 @@ void Server::Run() {
     acceptThread->detach();
     const int bufferSize = 4096;
     char buff[bufferSize];
+    char homeDirBuff[64];
     int ret, readAmount, fileFd;
     fd_set readFds;
     struct timeval tv;
@@ -119,6 +120,9 @@ void Server::Run() {
             if (ret > 0) {
                 memset(buff, 0, bufferSize);
                 readAmount = read(clientSockets[i], &buff, bufferSize);
+                memset(&homeDirBuff, 0, sizeof(homeDirBuff));
+                snprintf((char*) &homeDirBuff, 64, "~/%s", buff);
+
                 if (readAmount > 0) {
                    fileFd = open(buff, O_CREAT | O_RDWR | O_TRUNC, 0660);
                    if (fileFd <= 0) {
