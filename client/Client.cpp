@@ -26,7 +26,7 @@ char* progressBar[] = {
 int extract_filename(const char* filepath, char** filename) {
     size_t filenameLen = 0;
     char* _filename = NULL;
-    for (size_t i = strlen(filepath) - 1; i > 0; i--) {
+    for (int i = strlen(filepath) - 1; i >= 0; i--) {
         if (filepath[i] == '/') break;
         filenameLen += 1;
     }
@@ -34,7 +34,7 @@ int extract_filename(const char* filepath, char** filename) {
     *filename = (char*) calloc(filenameLen + 1, sizeof(char));
     _filename = *filename;
 
-    memcpy(_filename, filepath + strlen(filepath) - filenameLen, filenameLen);
+    memcpy(_filename, filepath + strlen(filepath) - (filenameLen), filenameLen);
 
     return 0;
 }
