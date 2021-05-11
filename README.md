@@ -24,23 +24,26 @@ Successfully sent file kek.txt to server!
 ```
 
 ## Запуск сервера
-Сервер можно запустить как и обычное приложение, так и как демона. 
+Сервер автоматически запускается как демон. 
 
-Чтобы запустить сервер как приложение нужно выполнить команду:
+Чтобы запустить сервер нужно выполнить команду:
 
 ```bash
 ./server <номер порта>
 ```
 
-Также сервер можно запустить как отдельного демона.
-
-Для этого нужно выполнить скрипт `create-daemon.sh` root-пользователем.
-Он создаст необходимые файлы для конфигурации демона.
-
-Затем нужно демона запустить (с root правами):
-
 ```bash
-systemctl start cooldaemon.service
+# cat /var/log/syslog | grep -i "cool"
+cooldaemon[12723]: Started accept thread
+cooldaemon[12723]: Started main server thread
+cooldaemon[12732]: Accepted new user!
+cooldaemon[12732]: Got new file: picture.png. Saving to /tmp/picture.png
 ```
 
-Данный демон расчитан на то, что в дистрибутиве присутствует модуль `systemd`.
+Чтобы остановить сервер нужно выполнить:
+
+```bash
+kill --signal TERM <server pid>
+# Или
+kill --signal HUP <server pid>
+```

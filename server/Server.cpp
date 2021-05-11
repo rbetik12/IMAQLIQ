@@ -5,8 +5,10 @@
 #include <fcntl.h>
 #include <syslog.h>
 #include <filesystem>
+#include <ftw.h>
 
 int main(int argc, char* argv[]) {
+    pid_t pid;
     short port;
     std::unique_ptr<Server> server;
 
@@ -20,6 +22,42 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    pid = fork();
+
+    if (pid < 0) {
+        perror("Fork");
+        exit(EXIT_FAILURE);
+    }
+
+    if (pid > 0) {
+        exit(EXIT_SUCCESS);
+    }
+
+    if (setsid() < 0) {
+        exit(EXIT_FAILURE);
+    }
+
+    pid = fork();
+
+    if (pid < 0) {
+        exit(EXIT_FAILURE);
+    }
+
+    if (pid > 0) {
+        exit(EXIT_SUCCESS);
+    }
+
+    umask(0);
+
+    chdir(".");
+
+    long x;
+    for (x = sysconf(_SC_OPEN_MAX); x>=0; x--) {
+        close (x);
+    }
+
+    openlog ("cooldaemon", LOG_PID, LOG_DAEMON);
+
     server.reset(Server::Create(port));
     server->Run();
     return 0;
@@ -28,14 +66,14 @@ int main(int argc, char* argv[]) {
 Server::Server(short port): isRunning(false) {
     int opt;
 
-    if ((serverFd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Can't create server socket");
+    if ((serverFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        syslog(LOG_ERR, "Can't create socket: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
                    &opt, sizeof(opt))) {
-        perror("Can't set socket op");
+        syslog(LOG_ERR, "Can't get socket op: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
@@ -45,12 +83,12 @@ Server::Server(short port): isRunning(false) {
 
     if (bind(serverFd, (struct sockaddr *) &address,
              sizeof(address)) < 0) {
-        perror("Bind failed");
+        syslog(LOG_ERR, "Bind failed: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     if (listen(serverFd, 10) < 0) {
-        perror("listen");
+        syslog(LOG_ERR, "Listen: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
 }
@@ -68,12 +106,14 @@ void Server::AcceptThread() {
     int addrLen = sizeof(address);
     struct sockaddr sockaddr;
 
+    syslog(LOG_INFO, "Started accept thread");
     while (isRunning) {
         if ((clientSocket = accept(serverFd, &sockaddr, (socklen_t*) &addrLen)) < 0) {
-            perror("accept");
+            syslog(LOG_ALERT, "accept");
         }
         else {
             clientSockets.push_back(clientSocket);
+            syslog(LOG_INFO, "Accepted new user!");
         }
     }
 }
@@ -96,8 +136,8 @@ void Server::Run() {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, Server::HandleSIGTERM);
     signal(SIGHUP, Server::HandleSIGHUP);
-    openlog("log", LOG_PID|LOG_CONS, LOG_USER);
 
+    syslog(LOG_INFO, "Started main server thread");
     while (isRunning) {
         FD_ZERO(&readFds);
         for (int i = 0; i < clientSockets.size(); i++) {
@@ -112,7 +152,7 @@ void Server::Run() {
             FD_SET(clientSockets[i], &readFds);
             ret = select(clientSockets[i] + 1, &readFds, nullptr, nullptr, &tv);
             if (ret < 0) {
-                perror("ret");
+                syslog(LOG_ERR, "ret error");
             }
             if (ret == 0) {
                 continue;
@@ -132,7 +172,7 @@ void Server::Run() {
                        send(clientSockets[i], "y", 1, 0);
                    }
                 }
-                syslog(LOG_INFO, "Got new file: %s. Saving to %s.", buff, saveDirBuff);
+                syslog(LOG_INFO, "Got new file: %s. Saving to %s", buff, saveDirBuff);
                 if (fileFd > 0) {
                     while ((readAmount = read(clientSockets[i], &buff, bufferSize)) > 0) {
                         write(fileFd, &buff, readAmount);
